@@ -2,12 +2,14 @@
 #define _TOOLS_H
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
+#include <errno.h>
+#include <sys/types.h>
 
 #define BACKLOG 5
 #define MAXLINE 4096
 #define SA struct sockaddr
-#define bzero(blk, size) memset(blk, 0, size)
 
 int
 Socket(int domain, int type, int protocol){
@@ -61,10 +63,70 @@ Listen(int sockfd, int backlog){
 
 int
 Accept(int fd, SA * sa, socklen_t *salenptr){
-int afd;
-if(0 > (afd = accept(fd, sa, salenptr))){
-perror("accept error\n");
-exit(0);
+    int afd;
+    if(0 > (afd = accept(fd, sa, salenptr))){
+        perror("accept error\n");
+        exit(0);
+    }
+    return afd;
 }
+
+int
+readn(int fd, char *buf, size_t nbyte){
+    if(NULL == buf) return 0;
+
+    char *ptr = buf;
+    int n, count = nbyte;
+    while(count > 0){
+        if((n = read(fd, ptr, count)) < 0){
+            if(EINTR == errno){
+                n = 0;
+            }else{
+                return -1;
+            }
+        }else if(0 == n){
+            break;
+        }
+        count -= n;
+        ptr += n;
+    }
+    return nbyte - count;
 }
+
+int
+Readn(int fd, char *buf, size_t nbyte){
+    int n;
+    if((n = readn(fd, buf, nbyte)) < 0){
+        perror("readn error\n");
+    }
+    return n;
+}
+
+int
+writen(int fd, const char *buf, size_t nbyte){
+    if(NULL == buf) return 0;
+
+    const char *ptr = buf;
+    int n, count = nbyte;
+    while(count > 0){
+        if((n = write(fd, ptr, count)) <= 0){
+            if(0 > n && EINTR == errno){
+                n = 0;
+            }else{
+                return -1;
+            }
+        }
+        count -= n;
+        ptr += n;
+    }
+    return nbyte;
+}
+
+void
+Writen(int fd, const char *buf, size_t nbyte){
+    if(writen(fd, buf, nbyte) != nbyte){
+        perror("writen error\n");
+    }
+}
+
 #endif

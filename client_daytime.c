@@ -6,6 +6,17 @@
 #include <arpa/inet.h>
 #include "tools.h"
 
+void
+show_socket(int fd){
+    struct sockaddr_in sockaddr;
+    int len = sizeof(sockaddr);
+    char addr[200];
+
+    getsockname(fd, (SA *) &sockaddr, &len);
+    inet_ntop(sockaddr.sin_family, &sockaddr.sin_addr, addr, sizeof(addr));
+    printf("Socket = Len: %d, AF: %d, Addr: %s, Port: %d\n", len, sockaddr.sin_family, addr, ntohs(sockaddr.sin_port));
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -26,7 +37,9 @@ main(int argc, char *argv[])
 
     Connect(fd, (SA *)&addr, sizeof(addr));
 
-    while((n = read(fd, recivline, MAXLINE))){
+    show_socket(fd);
+
+    while((n = Readn(fd, recivline, MAXLINE))){
         recivline[n] = 0;
         Fputs(recivline, stdout);
     }
