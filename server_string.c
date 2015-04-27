@@ -1,16 +1,36 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 #include <arpa/inet.h>
 #include "tools.h"
 
 void
+sig_chld(int signo){
+    pid_t pid;
+    int stat;
+    while((pid = waitpid(-1, &stat, WNOHANG)) > 0){
+        printf("(%d) child %d terminated.\n", stat, pid);
+    }
+    return;
+}
+
+void
 str_echo(int sockfd){
-	long n;
+	long n, x, y;
 	char buf[MAXLINE];
 
 again:
 	while ((n = read(sockfd, buf, MAXLINE)) > 0){
+        /*if(sscanf(buf, "%ld%ld", &x, &y) != 2){
+            snprintf(buf, MAXLINE, "please input two number");
+        }else{
+            snprintf(buf, MAXLINE, "%ld", x+y);
+            }*/
+        snprintf(buf, MAXLINE, "input error");
+        n = strlen(buf);
 		Writen(sockfd, buf, n);
     }
 
@@ -28,6 +48,8 @@ main(int argc, char **argv)
 	socklen_t clilen;
 	struct sockaddr_in cliaddr, servaddr;
 
+    signal(SIGCHLD, sig_chld);
+
 	listenfd = Socket(AF_INET, SOCK_STREAM, 0);
 
 	bzero(&servaddr, sizeof(servaddr));
@@ -41,7 +63,13 @@ main(int argc, char **argv)
 
 	while(1){
 		clilen = sizeof(cliaddr);
-		connfd = Accept(listenfd, (SA *) &cliaddr, &clilen);
+		if(0 > (connfd = accept(listenfd, (SA *) &cliaddr, &clilen))){
+            if(EINTR == errno){
+                continue;
+            }else{
+                printf("accept error");
+            }
+        }
 
 		if ((childpid = Fork()) == 0) {
 			close(listenfd);
