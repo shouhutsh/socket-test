@@ -7,8 +7,6 @@
 #include <sys/select.h>
 #include "tools.h"
 
-#define max(x, y) ((x) > (y) ? (x) : (y))
-
 void
 sig_pipe(int signo){
     printf("sig pipe error\n");
@@ -66,7 +64,7 @@ main(int argc, char *argv[])
     signal(SIGPIPE, sig_pipe);
 
     for(i = 0; i < 5; ++i){
-        Inet_pton(AF_INET, (SA *) &addr, sizeof(addr));
+        Inet_pton(AF_INET, argv[1], &addr.sin_addr);
         addr.sin_family = AF_INET;
         addr.sin_port = htons(atoi(argv[2]));
 

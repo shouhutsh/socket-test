@@ -7,41 +7,15 @@
 #include <arpa/inet.h>
 #include "tools.h"
 
-void
-sig_chld(int signo){
-    pid_t pid;
-    int stat;
-    while((pid = waitpid(-1, &stat, WNOHANG)) > 0){
-        printf("(%d) child %d terminated.\n", stat, pid);
-    }
-    return;
-}
-
-void
-str_echo(int sockfd){
-	long n, x, y;
-	char buf[MAXLINE];
-
-again:
-	while ((n = read(sockfd, buf, MAXLINE)) > 0){
-		Writen(sockfd, buf, n);
-    }
-
-	if (n < 0 && errno == EINTR)
-		goto again;
-	else if (n < 0)
-		err_sys("str_echo error");
-}
-
 int
 main(int argc, char **argv)
 {
 	int listenfd, connfd;
-	pid_t childpid;
 	socklen_t clilen;
 	struct sockaddr_in cliaddr, servaddr;
-
-    signal(SIGCHLD, sig_chld);
+    fd_set rest, allset;
+    char buf[MAXLINE];
+    int i, n, maxfd, maxi, nready, client[FD_SETSIZE];
 
 	listenfd = Socket(AF_INET, SOCK_STREAM, 0);
 
@@ -54,23 +28,52 @@ main(int argc, char **argv)
 
 	Listen(listenfd, BACKLOG);
 
+    maxi = -1;
+    maxfd = listenfd;
+    FD_ZERO(&allset);
+    FD_SET(listenfd, &allset);
+    for(i = 0; i < FD_SETSIZE; ++i){
+        client[i] = -1;
+    }
 	while(1){
-		clilen = sizeof(cliaddr);
-		if(0 > (connfd = accept(listenfd, (SA *) &cliaddr, &clilen))){
-            if(EINTR == errno){
+        rest = allset;
+        nready = Select(maxfd+1, &rest, NULL, NULL, NULL);
+
+        if(FD_ISSET(listenfd, &rest)){
+            clilen = sizeof(cliaddr);
+            connfd = Accept(listenfd, (SA *) &cliaddr, &clilen);
+            for(i = 0; i < FD_SETSIZE; ++i){
+                if(-1 == client[i]){
+                    client[i] = connfd;
+                    break;
+                }
+            }
+            if(FD_SETSIZE == i){
+                err_sys("too many client");
+            }
+            FD_SET(connfd, &allset);
+            maxfd = max(maxfd, connfd);
+            maxi = max(maxi, i);
+            if(--nready <= 0){
                 continue;
-            }else{
-                printf("accept error");
             }
         }
 
-		if ((childpid = Fork()) == 0) {
-			close(listenfd);
-			str_echo(connfd);
-			exit(0);
-		}
-		close(connfd);
-	}
-    close(listenfd);
+        for(i = 0; i < maxi; ++i){
+            if(-1 == (connfd = client[i])) continue;
+            if(FD_ISSET(connfd, &rest)){
+                if(0 == (n = read(connfd, buf, MAXLINE))){
+                    FD_CLR(connfd, &allset);
+                    client[i] = -1;
+                    close(connfd);
+                }else{
+                    Writen(connfd, buf, n);
+                }
+            }
+            if(--nready <= 0){
+                break;
+            }
+        }
+    }
     return 0;
 }

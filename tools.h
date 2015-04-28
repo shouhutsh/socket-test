@@ -13,6 +13,8 @@
 
 #define SERV_PORT 12345
 
+#define max(x, y) ((x) > (y) ? (x) : (y))
+
 void
 err_sys(const char * msg){
     perror(msg);
@@ -208,6 +210,15 @@ Readline(int fd, void *ptr, size_t maxlen)
 	if ((n = readline(fd, ptr, maxlen)) < 0)
 		err_sys("readline error");
 	return(n);
+}
+
+int
+Select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout){
+    int nready = select(nfds, readfds, writefds, exceptfds, timeout);
+    if(nready < 0){
+        err_sys("select error");
+    }
+    return nready;
 }
 
 #endif
