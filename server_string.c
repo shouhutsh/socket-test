@@ -24,12 +24,11 @@ str_echo(int sockfd){
 
 again:
 	while ((n = read(sockfd, buf, MAXLINE)) > 0){
-        /*if(sscanf(buf, "%ld%ld", &x, &y) != 2){
-            snprintf(buf, MAXLINE, "please input two number");
+        if(sscanf(buf, "%ld%ld", &x, &y) != 2){
+            snprintf(buf, MAXLINE, "please input two number\n");
         }else{
-            snprintf(buf, MAXLINE, "%ld", x+y);
-            }*/
-        snprintf(buf, MAXLINE, "input error");
+            snprintf(buf, MAXLINE, "%ld\n", x+y);
+        }
         n = strlen(buf);
 		Writen(sockfd, buf, n);
     }

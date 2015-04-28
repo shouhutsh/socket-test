@@ -16,9 +16,7 @@ void
 str_cli(int fd){
     char line[MAXLINE+1];
     while(Fgets(line, MAXLINE, stdin) != NULL){
-        Writen(fd, line, 1);
-        sleep(1);
-        Writen(fd, line+1, strlen(line)-1);
+        Writen(fd, line, strlen(line));
         if(Readline(fd, line, MAXLINE) == 0){
             perror("readline error\n");
             exit(1);
